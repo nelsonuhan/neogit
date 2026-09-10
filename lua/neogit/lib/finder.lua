@@ -281,11 +281,9 @@ local function fzf_opts(opts)
     fzf_opts["--layout"] = "reverse-list"
   end
 
-  if opts.border then
-    fzf_opts["--border"] = "rounded"
-  else
-    fzf_opts["--border"] = "none"
-  end
+  -- The border is drawn by the neovim float via `winopts.border`; letting fzf
+  -- draw its own border on top of that would produce a doubled border.
+  fzf_opts["--border"] = "none"
 
   return fzf_opts
 end
@@ -300,7 +298,7 @@ local function default_opts()
     },
     refocus_status = true,
     allow_multi = false,
-    border = false,
+    border = config.values.floating.border,
     prompt_prefix = "select",
     previewer = false,
     cache_picker = false,
@@ -313,7 +311,7 @@ end
 ---@class FinderOpts
 ---@field layout_config table
 ---@field allow_multi boolean
----@field border boolean
+---@field border string|boolean
 ---@field prompt_prefix string
 ---@field previewer boolean
 ---@field layout_strategy string
@@ -430,7 +428,7 @@ function Finder:find(on_select)
         preset = self.opts.theme,
         preview = self.opts.previewer,
         height = self.opts.layout_config.height,
-        border = self.opts.border and "rounded" or "none",
+        border = self.opts.border or "none",
       },
       confirm = confirm,
       on_close = on_close,
