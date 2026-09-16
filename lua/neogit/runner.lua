@@ -33,6 +33,37 @@ local function store_process_result(job)
   end
 end
 
+-- Messages from non-zero exits that indicate auth failure.
+-- Any other non-zero exit after a password prompt (e.g. a rejected
+-- non-fast-forward push) should not be treated as an auth failure.
+local AUTH_FAILURE_PATTERNS = {
+  "authentication failed",
+  "permission denied",
+  "access denied",
+  "invalid username",
+  "invalid credentials",
+  "incorrect password",
+  "bad passphrase",
+  "unauthorized",
+}
+
+---@param result ProcessResult
+---@return boolean
+local function is_auth_failure(result)
+  for _, lines in ipairs { result.stdout, result.stderr } do
+    for _, line in ipairs(lines) do
+      local text = util.remove_ansi_escape_codes(line):lower()
+      for _, pattern in ipairs(AUTH_FAILURE_PATTERNS) do
+        if text:find(pattern, 1, true) then
+          return true
+        end
+      end
+    end
+  end
+
+  return false
+end
+
 ---@param line string
 ---@return string
 local function handle_interactive_authenticity(line)
@@ -187,6 +218,7 @@ function M.call(process, opts)
     result.code ~= 0
     and state.password_attempts > 0
     and state.password_attempts < MAX_PASSWORD_ATTEMPTS
+    and is_auth_failure(result)
   do
     logger.debug(
       string.format(
@@ -206,7 +238,7 @@ function M.call(process, opts)
     store_process_result(result)
   end
 
-  if result.code ~= 0 and state.password_attempts >= MAX_PASSWORD_ATTEMPTS then
+  if result.code ~= 0 and state.password_attempts >= MAX_PASSWORD_ATTEMPTS and is_auth_failure(result) then
     notification.error("Authentication failed after " .. MAX_PASSWORD_ATTEMPTS .. " attempts")
   end
 
