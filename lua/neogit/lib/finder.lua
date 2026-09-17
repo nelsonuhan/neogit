@@ -381,11 +381,17 @@ function Finder:find(on_select)
   elseif config.check_integration("fzf_lua") then
     local fzf_lua = require("fzf-lua")
     local actions, on_close = fzf_actions(on_select, self.opts.allow_multi, self.opts.refocus_status)
+    -- fzf-lua treats a height > 1 as an absolute line count that *includes*
+    -- the border rows, so a bordered window would lose two rows of results.
+    local height = self.opts.layout_config.height
+    if height > 1 and self.opts.border and self.opts.border ~= "none" then
+      height = height + 2
+    end
     fzf_lua.fzf_exec(self.entries, {
       prompt = string.format("%s> ", self.opts.prompt_prefix),
       fzf_opts = fzf_opts(self.opts),
       winopts = {
-        height = self.opts.layout_config.height,
+        height = height,
         border = self.opts.border,
         preview = { border = self.opts.border },
         -- fzf-lua invokes `winopts.on_close` from `FzfWin:close()` before the
